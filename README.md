@@ -1,8 +1,8 @@
 # How Does Preconditioning Guide Feature Learning in Deep Neural Networks?
 
-このレポジトリは我々の論文"How Does Preconditioning Guide Feature Learning in Deep Neural Networks?"の実験ソースコードです。
+This repository contains the experimental source code for our paper "How Does Preconditioning Guide Feature Learning in Deep Neural Networks?".
 
-我々は、深層学習モデルの特徴量学習におけるpreconditioningの影響について調べました。その結果、preconditioning行列が持つスペクトラムバイアスが直接特徴料学習に影響、つまり、その大きい固有値成分ほど特徴量学習において支配的になり、モデルに取り込まれる。さらに、汎化性能の観点では、教師モデルのスペクトラムバイアスとpreconditioning行列のそれがアラインすることが重要であることを明らかにした。
+We investigated the effects of preconditioning on feature learning in deep learning models. Our results show that the spectral bias of the preconditioning matrix directly influences feature learning - specifically, components with larger eigenvalues become dominant in feature learning and are incorporated into the model. Furthermore, from a generalization performance perspective, we revealed that alignment between the spectral bias of the teacher model and that of the preconditioning matrix is crucial.
 
 ## Project Overview
 
