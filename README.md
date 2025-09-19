@@ -22,7 +22,7 @@ pip install pytorch-optimizer torch-optimizer
 
 ### Basic Experiments
 
-**Vanilla Generalization (preconditioned by $\Sigma_X$)**:
+**Vanilla Generalization**:
 ```bash
 python src/vanilla_generalization_cov.py # preconditioned by $\Sigma_X$
 python src/vanilla_generalization_adahessian.py # preconditioned by AdaHessian
