@@ -36,7 +36,7 @@ class Config:
     update_freq: int = 1
     hessian_power: float = 1.0
     seed: int = 42
-    total_epochs: int = 500
+    epochs: int = 500
     mode: str = "high"
     out_path: Optional[str] = None
 
@@ -68,7 +68,7 @@ def parse_args_to_config() -> Config:
     parser.add_argument("--update-freq", dest="update_freq", type=int, default=Config.update_freq, help="Hessian update frequency")
     parser.add_argument("--hessian-power", dest="hessian_power", type=float, default=Config.hessian_power, help="Hessian power/exponent")
     parser.add_argument("--seed", type=int, default=Config.seed, help="Random seed")
-    parser.add_argument("--total-epochs", dest="total_epochs", type=int, default=Config.total_epochs, help="Total training epochs")
+    parser.add_argument("--epochs", dest="epochs", type=int, default=Config.epochs, help="Total training epochs")
     parser.add_argument("--mode", type=str, choices=["high", "low"], default=Config.mode, help="OOD test mode")
     args = parser.parse_args()
     return Config(**vars(args))
@@ -190,7 +190,7 @@ def trainer(config):
         return loss
 
     step_count = 0
-    for epoch in range(0, config.total_epochs):
+    for epoch in range(0, config.epochs):
 
         print(f'epoch: {epoch} start')
 

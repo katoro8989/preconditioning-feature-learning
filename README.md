@@ -24,17 +24,17 @@ pip install pytorch-optimizer torch-optimizer
 
 **Vanilla Generalization**:
 ```bash
-python src/vanilla_generalization_cov.py # preconditioned by $\Sigma_X$
-python src/vanilla_generalization_adahessian.py # preconditioned by AdaHessian
+python src/vanilla_generalization_cov.py --out_path <PATH/TO/OUTPUT/DIR> --p 1 --mode high # preconditioned by $\Sigma_X$
+python src/vanilla_generalization_adahessian.py --out_path <PATH/TO/OUTPUT/DIR> --p 1 --mode high # preconditioned by AdaHessian
 ```
 
 **OOD Generalization**:
 ```bash
-python src/ood_generalization.py
+python src/ood_generalization.py --out_path <PATH/TO/OUTPUT/DIR> --optimizer adam 1 --mode high 
 ```
 
 **Transfer Learning**:
 ```bash
-python src/transfer_learning_cov.py # preconditioned by $\Sigma_X$
-python src/transfer_learning_adahessian.py # preconditioned by AdaHessian
+python src/transfer_learning_cov.py --out_path <PATH/TO/OUTPUT/DIR> --p 1 --train-mode high --transfer-mode low # preconditioned by $\Sigma_X$
+python src/transfer_learning_adahessian.py --out_path <PATH/TO/OUTPUT/DIR> --p 1 --train-mode high  --transfer-mode low # preconditioned by AdaHessian
 ```
