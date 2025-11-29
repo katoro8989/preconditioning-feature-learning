@@ -5,7 +5,9 @@ import datetime
 import uuid
 from pathlib import Path
 from dataclasses import dataclass
-
+from typing import Optional
+import argparse
+import json
 import yaml
 import numpy as np
 import torch
@@ -35,8 +37,41 @@ class Config:
     hessian_power: float = 1.0
     seed: int = 42
     total_epochs: int = 500
-    use_scheduler: bool = False
     mode: str = "high"
+    out_path: Optional[str] = None
+
+def _str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        v_lower = v.lower()
+        if v_lower in ("yes", "true", "t", "y", "1"):
+            return True
+        if v_lower in ("no", "false", "f", "n", "0"):
+            return False
+    raise argparse.ArgumentTypeError("Boolean value expected (true/false).")
+
+
+def parse_args_to_config() -> Config:
+    parser = argparse.ArgumentParser(description="Configure experiment parameters.")
+    parser.add_argument("--out_path", type=str, default=None, help="Output path")
+    parser.add_argument("--optimizer", type=str, default=Config.optimizer, help="Optimizer name")
+    parser.add_argument("--lr", type=float, default=Config.lr, help="Learning rate")
+    parser.add_argument("--weight-decay", dest="weight_decay", type=float, default=Config.weight_decay, help="Weight decay")
+    parser.add_argument("--momentum", type=float, default=Config.momentum, help="Momentum for SGD-like optimizers")
+    parser.add_argument("--eps", type=float, default=Config.eps, help="Epsilon for numerical stability")
+    parser.add_argument("--beta-1", dest="beta_1", type=float, default=Config.beta_1, help="Adam beta1")
+    parser.add_argument("--beta-2", dest="beta_2", type=float, default=Config.beta_2, help="Adam beta2")
+    parser.add_argument("--rho", type=float, default=Config.rho, help="AdaHessian rho")
+    parser.add_argument("--damping", type=float, default=Config.damping, help="Damping for second-order methods")
+    parser.add_argument("--epsilon", type=float, default=Config.epsilon, help="Second-order epsilon")
+    parser.add_argument("--update-freq", dest="update_freq", type=int, default=Config.update_freq, help="Hessian update frequency")
+    parser.add_argument("--hessian-power", dest="hessian_power", type=float, default=Config.hessian_power, help="Hessian power/exponent")
+    parser.add_argument("--seed", type=int, default=Config.seed, help="Random seed")
+    parser.add_argument("--total-epochs", dest="total_epochs", type=int, default=Config.total_epochs, help="Total training epochs")
+    parser.add_argument("--mode", type=str, choices=["high", "low"], default=Config.mode, help="OOD test mode")
+    args = parser.parse_args()
+    return Config(**vars(args))
 
 
 def trainer(config):
@@ -199,8 +234,6 @@ def trainer(config):
             step_count += 1
             if config.optimizer != "sam":
                 optimizer.zero_grad()
-            if config.use_scheduler:
-                scheduler.step()
 
             batch_time = time.time() - start_time
             avg_batch_time += batch_time
@@ -215,8 +248,15 @@ def trainer(config):
 
         print(f'epoch: {epoch} done')
 
-
+        if config.out_path:
+            save_dir = os.path.join(config.out_path, f"ood_generalization_{config.optimizer}")
+            os.makedirs(save_dir, exist_ok=True)
+            np.save(os.path.join(save_dir, "val_metrics.npy"), val_metrics)
+            np.save(os.path.join(save_dir, "test_metrics.npy"), test_metrics)
+            with open(os.path.join(save_dir, "config.json"), "w") as f:
+                json.dump(config.__dict__, f)
+            print(f"Saved training and test metrics to {save_dir}")
 
 if __name__ == "__main__":
-    config = Config()
+    config = parse_args_to_config()
     trainer(config)

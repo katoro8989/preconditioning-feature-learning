@@ -4,6 +4,10 @@ import torch
 import torch.nn as nn
 from dataclasses import dataclass
 import copy
+import argparse
+import json
+import os
+from typing import Optional
 
 @dataclass
 class Config:
@@ -28,7 +32,42 @@ class Config:
     train_split: float = 0.02
     
     p: float = 0.0
+    out_path: Optional[str] = None
 
+def _str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        v_lower = v.lower()
+        if v_lower in ("yes", "true", "t", "y", "1"):
+            return True
+        if v_lower in ("no", "false", "f", "n", "0"):
+            return False
+    raise argparse.ArgumentTypeError("Boolean value expected (true/false).")
+
+
+def parse_args_to_config() -> Config:
+    parser = argparse.ArgumentParser(description="Configure experiment parameters.")
+    parser.add_argument("--out_path", type=str, help="Output path")
+    parser.add_argument("--dx", type=int, default=Config.dx, help="Input dimension")
+    parser.add_argument("--dh", type=int, default=Config.dh, help="Hidden dimension")
+    parser.add_argument("--dy", type=int, default=Config.dy, help="Output dimension")
+    parser.add_argument("--n", type=int, default=Config.n, help="Number of samples")
+    parser.add_argument("--k-components", dest="k_components", type=int, default=Config.k_components, help="Number of top components")
+    parser.add_argument("--seed", type=int, default=Config.seed, help="Random seed")
+    parser.add_argument("--train-mode", type=str, choices=["high", "low"], default=Config.train_mode, help="Eigenvalue emphasis mode for training")
+    parser.add_argument("--transfer-mode", type=str, choices=["high", "low"], default=Config.transfer_mode, help="Eigenvalue emphasis mode for transfer")
+    parser.add_argument("--scale", type=float, default=Config.scale, help="Scale for eigenvalues")
+    parser.add_argument("--snr", type=float, default=Config.snr, help="Signal-to-noise ratio")
+    parser.add_argument("--epochs", type=int, default=Config.epochs, help="Training epochs")
+    parser.add_argument("--lr", type=float, default=Config.lr, help="Learning rate")
+    parser.add_argument("--wd", type=float, default=Config.wd, help="Weight decay")
+    parser.add_argument("--exclude-bias", type=_str2bool, default=Config.exclude_bias, help="Whether to exclude bias parameters from weight decay (true/false)")
+    parser.add_argument("--log-every", dest="log_every", type=int, default=Config.log_every, help="Logging interval (epochs)")
+    parser.add_argument("--train-split", dest="train_split", type=float, default=Config.train_split, help="Fraction of data for training")
+    parser.add_argument("--p", type=float, default=Config.p, help="Preconditioning power p")
+    args = parser.parse_args()
+    return Config(**vars(args))
 
 def teacher_activation_and_derivatives(z):
     sigma_star = np.log(1 + np.exp(z*10))
@@ -177,7 +216,7 @@ def solve_head_ridge_closed_form(model, X_train, y_train, X_test=None, y_test=No
     return model, train_mse, test_mse
 
 def main():
-    config = Config()
+    config = parse_args_to_config()
 
     if config.train_mode == "high":
         eigenvalues = np.array([config.scale]*config.k_components + [1 / config.scale]*(config.dx - config.k_components))
@@ -235,16 +274,27 @@ def main():
     y_train_n = (y_train - y_mean) / (y_std + 1e-8)
     y_test_n  = (y_test  - y_mean) / (y_std + 1e-8)
 
-    print("transfering")
+    print("transferring")
 
     model, tr2, te2 = solve_head_ridge_closed_form(model, X_train, y_train_n, X_test, y_test_n)
+
+    if config.out_path:
+        save_dir = os.path.join(config.out_path, f"transfer_learning_cov_p_{config.p:.1f}")
+        os.makedirs(save_dir, exist_ok=True)
+        np.save(os.path.join(save_dir, "tr1.npy"), tr1)
+        np.save(os.path.join(save_dir, "te1.npy"), te1)
+        np.save(os.path.join(save_dir, "tr2.npy"), tr2)
+        np.save(os.path.join(save_dir, "te2.npy"), te2)
+        with open(os.path.join(save_dir, "config.json"), "w") as f:
+            json.dump(config.__dict__, f)
+        print(f"Saved training and test losses to {save_dir}")
 
 
 
     return tr1, te1, tr2, te2
 
 if __name__ == "__main__":
-    config = Config()
+    config = parse_args_to_config()
     tr1, te1, tr2, te2 = main()
-    print(f"p={config.p:4.1f}: Train1 Loss = {tr1[-1]:.6f}, Test1 Loss = {te1[-1]:.6f}")
-    print(f"p={config.p:4.1f}: Train2 Loss = {tr2:.6f}, Test2 Loss = {te2:.6f}")
+    print(f"p={config.p:4.1f}: Final Train1 Loss = {tr1[-1]:.6f}, Final Test1 Loss = {te1[-1]:.6f}")
+    print(f"p={config.p:4.1f}: Final Train2 Loss = {tr2:.6f}, Final Test2 Loss = {te2:.6f}")
