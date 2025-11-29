@@ -5,6 +5,7 @@ import torch.nn as nn
 from dataclasses import dataclass
 import copy
 import argparse
+import json
 import os
 from typing import Optional
 
@@ -204,10 +205,13 @@ def main():
     model, tr, te = train_with_p(init_model, config, eigenvectors, eigenvalues, X_train, y_train_n, X_test, y_test_n, device)
 
     if config.out_path:
-        os.makedirs(config.out_path, exist_ok=True)
-        np.save(os.path.join(config.out_path, "tr.npy"), tr)
-        np.save(os.path.join(config.out_path, "te.npy"), te)
-        print(f"Saved training and test losses to {config.out_path}")
+        save_dir = os.path.join(config.out_path, f"vanilla_generalization_cov_p_{config.p:.1f}")
+        os.makedirs(save_dir, exist_ok=True)
+        np.save(os.path.join(save_dir, "tr.npy"), tr)
+        np.save(os.path.join(save_dir, "te.npy"), te)
+        with open(os.path.join(save_dir, "config.json"), "w") as f:
+            json.dump(config.__dict__, f)
+        print(f"Saved training and test losses to {save_dir}")
 
     return tr, te
 
