@@ -5,9 +5,10 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from dataclasses import dataclass
 import copy
-
+import os
+from typing import Optional
 from opt.adahessian import AdaHessian
-
+import argparse
 @dataclass
 class Config:
     dx: int = 10
@@ -31,6 +32,41 @@ class Config:
     
     p: float = 0.0
 
+    out_path: Optional[str] = None
+
+def _str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, str):
+        v_lower = v.lower()
+        if v_lower in ("yes", "true", "t", "y", "1"):
+            return True
+        if v_lower in ("no", "false", "f", "n", "0"):
+            return False
+    raise argparse.ArgumentTypeError("Boolean value expected (true/false).")
+
+
+def parse_args_to_config() -> Config:
+    parser = argparse.ArgumentParser(description="Configure experiment parameters.")
+    parser.add_argument("--out_path", type=str, help="Output path")
+    parser.add_argument("--dx", type=int, default=Config.dx, help="Input dimension")
+    parser.add_argument("--dh", type=int, default=Config.dh, help="Hidden dimension")
+    parser.add_argument("--dy", type=int, default=Config.dy, help="Output dimension")
+    parser.add_argument("--n", type=int, default=Config.n, help="Number of samples")
+    parser.add_argument("--k-components", dest="k_components", type=int, default=Config.k_components, help="Number of top components")
+    parser.add_argument("--seed", type=int, default=Config.seed, help="Random seed")
+    parser.add_argument("--mode", type=str, choices=["high", "low"], default=Config.mode, help="Eigenvalue emphasis mode")
+    parser.add_argument("--scale", type=float, default=Config.scale, help="Scale for eigenvalues")
+    parser.add_argument("--snr", type=float, default=Config.snr, help="Signal-to-noise ratio")
+    parser.add_argument("--epochs", type=int, default=Config.epochs, help="Training epochs")
+    parser.add_argument("--lr", type=float, default=Config.lr, help="Learning rate")
+    parser.add_argument("--wd", type=float, default=Config.wd, help="Weight decay")
+    parser.add_argument("--exclude-bias", type=_str2bool, default=Config.exclude_bias, help="Whether to exclude bias parameters from weight decay (true/false)")
+    parser.add_argument("--log-every", dest="log_every", type=int, default=Config.log_every, help="Logging interval (epochs)")
+    parser.add_argument("--train-split", dest="train_split", type=float, default=Config.train_split, help="Fraction of data for training")
+    parser.add_argument("--p", type=float, default=Config.p, help="Preconditioning power p")
+    args = parser.parse_args()
+    return Config(**vars(args))
 
 def teacher_activation_and_derivatives(z):
     sigma_star = np.log(1 + np.exp(z*10))
@@ -121,7 +157,7 @@ def train_with_p(init_model, config: Config, train_loader, test_loader, device):
 
 
 def main():
-    config = Config()
+    config = parse_args_to_config()
     
     if config.mode == "high":
         eigenvalues = np.array([config.scale]*config.k_components + [1 / config.scale]*(config.dx - config.k_components))
@@ -163,8 +199,14 @@ def main():
 
     model, tr, te = train_with_p(init_model, config, train_loader, test_loader, device)
 
+    if config.out_path:
+        os.makedirs(config.out_path, exist_ok=True)
+        np.save(os.path.join(config.out_path, "tr.npy"), tr)
+        np.save(os.path.join(config.out_path, "te.npy"), te)
+        print(f"Saved training and test losses to {config.out_path}")
+
     return tr, te
 
 if __name__ == "__main__":
     tr, te = main()
-    print(f"Train Loss = {tr[-1]:.6f}, Test Loss = {te[-1]:.6f}")
+    print(f"Final Train Loss = {tr[-1]:.6f}, Final Test Loss = {te[-1]:.6f}")
