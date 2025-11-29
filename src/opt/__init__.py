@@ -7,7 +7,7 @@ import math
 import torch_optimizer
 import pytorch_optimizer
 from .shampoo import Shampoo
-from adahessian import AdaHessian
+from .adahessian import AdaHessian
 
 
 @attr.s
